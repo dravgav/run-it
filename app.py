@@ -15,12 +15,10 @@ location = st.text_input("Enter your location address: ")
 unit = st.radio("Choose your preferred unit: ", ("km", "mi"))
 
 if unit == "km": 
-    min_dist = 1.0
-    max_dist = 48.0
+    min_dist, max_dist = 1.0, 48.0
     step = 0.5
 if unit == "mi":
-    min_dist = 1.0
-    max_dist = 30.0
+    min_dist, max_dist = 1.0, 30.0
     step = 0.5
 
 distance = st.slider(f"Choose your preferred running distance ({unit.lower()}):",
@@ -46,11 +44,25 @@ elevation_range = elevation_options[elevation_choice]
 
 st.write(f"You selected an elevation change between {elevation_range[0]} and {elevation_range[1]} meters.")
 
-# validate address function
+# validate address by converting into latitude,longitude coordinates for generating routes
+def validate_address(address):
+    try: 
+        geoCode = client.pelias_search(text=address)
 
-# call address validation function here
+        if geoCode['features']:
+            coords = geoCode['features'][0]['geometry']['coordinates']
+            long, lat = coords
+            return lat, long
+        else:
+            st.error("No location found given address, please enter a valid address")
+            return None, None
+    except Exception as error:
+        st.error(f"An error has occurred while validating: {error}")
+        return None, None
 
-# generate routes function using generate routes button
-if st.button("Generate routes"):
+# call address validation function here TODO:
+
+# generate routes function using generate routes button TODO:
+if st.button("Generate routes"):  # TODO: make button gray when not all options filled out
     # do stuff
     ...
