@@ -44,9 +44,13 @@ elevation_range = elevation_options[elevation_choice]
 
 st.write(f"You selected an elevation change between {elevation_range[0]} and {elevation_range[1]} meters.")
 
+filled = bool(location and elevation_choice and distance)
+
 # validate address by converting into latitude,longitude coordinates for generating routes
+# TODO: geocoding done, figure out better validation
 def validate_address(address):
     try: 
+        print(address)
         geoCode = client.pelias_search(text=address)
 
         if geoCode['features']:
@@ -60,9 +64,18 @@ def validate_address(address):
         st.error(f"An error has occurred while validating: {error}")
         return None, None
 
-# call address validation function here TODO:
+# TODO: generate routes function
 
-# generate routes function using generate routes button TODO:
-if st.button("Generate routes"):  # TODO: make button gray when not all options filled out
-    # do stuff
-    ...
+#  generate routes button process
+if st.button("Generate routes", disabled=not filled): 
+    if location:
+        with st.spinner('Geocoding your location...'):
+            lat, long = validate_address(location)
+            if lat and long:
+                st.success("Address has been successfully validated and geocoded")
+                print(lat, long)
+                # TODO: get routes
+            else:
+                st.error("Unable to validate and geocode location provided")
+    else:
+        st.warning("Please enter your current location")
