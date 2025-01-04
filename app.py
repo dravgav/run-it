@@ -1,6 +1,16 @@
+import openrouteservice.directions
 import streamlit as st
 import openrouteservice
+from openrouteservice.directions import directions
 import pandas as pd
+import random
+import folium
+from streamlit_folium import st_folium
+import polyline
+
+# flag to save map onto screen
+if "show_map" not in st.session_state:
+    st.session_state["show_map"] = False
 
 # openrouteservice api key initialization
 ORS_API_KEY = st.secrets["openrouteservice"]["api_key"]
@@ -10,7 +20,6 @@ client = openrouteservice.Client(key=ORS_API_KEY)
 st.title("Running Route Generator")
 
 location = st.text_input("Enter your location address: ")
-# use st.map so they can pinpoint it on the map later
 
 unit = st.radio("Choose your preferred unit: ", ("km", "mi"))
 
@@ -56,7 +65,7 @@ def validate_address(address):
         if geoCode['features']:
             coords = geoCode['features'][0]['geometry']['coordinates']
             long, lat = coords
-            return lat, long
+            return long, lat
         else:
             st.error("No location found given address, please enter a valid address")
             return None, None
@@ -64,18 +73,96 @@ def validate_address(address):
         st.error(f"An error has occurred while validating: {error}")
         return None, None
 
-# TODO: generate routes function
+
+def generate_route(lat, long, dist_m, seed):
+    """
+    Given the origin (latitude and longitude) of the given address, random seed, and the preferred distance,
+    generates a round-trip route using the number of points to create a loop route.
+    Calls ORS to generate route/give directions based on these values. 
+    Return GeoJSON route object, None if failed.
+    """
+    origin = [long, lat]
+    coords = [origin]
+
+    print(dist_m)
+
+    try:
+        route = openrouteservice.directions.directions(
+            client, 
+            coords, 
+            profile="foot-walking", 
+            units="km",
+            options = {
+                "round_trip": {
+                    "length": dist_m,
+                    "points": 3,
+                    "seed": seed
+            }
+        })
+        return route
+    except Exception as e:
+        st.error(f"Error generating route: {e}")
+        return None
+
+
 
 #  generate routes button process
 if st.button("Generate routes", disabled=not filled): 
     if location:
         with st.spinner('Geocoding your location...'):
-            lat, long = validate_address(location)
+            long, lat = validate_address(location)
             if lat and long:
                 st.success("Address has been successfully validated and geocoded")
-                print(lat, long)
-                # TODO: get routes
+                print(long, lat)
+                
+                # generate routes
+                routes = []
+                for i in range(3):
+                    random_seed = random.randint(1, 1000)
+                    route = generate_route(lat, long, distance_meters, random_seed)
+                    routes.append(route)
+
+                # update st flags
+                st.session_state["show_map"] = True
+                st.session_state["routes"] = routes
+
             else:
                 st.error("Unable to validate and geocode location provided")
     else:
         st.warning("Please enter your current location")
+
+
+# Displaying the running routes
+if st.session_state["show_map"] and st.session_state["routes"]:
+    st.title("Running Routes Below:")
+
+    # create indices for each running route
+    route_indices = list(range(len(st.session_state["routes"])))
+    selected_route_idx = st.radio(
+        "Select a route to display:",
+        route_indices,
+        format_func=lambda x: f"Route {x+1}"
+    )
+    
+    # Get the selected route's encoded geometry
+    selected_route = st.session_state["routes"][selected_route_idx]
+    encoded_polyline = selected_route["routes"][0]["geometry"]
+    
+    # Decode polyline (running route) => get the list of (lat, lon)'s
+    coords = polyline.decode(encoded_polyline)
+    
+    # Center map on the user's location
+    m = folium.Map(location=coords[0], zoom_start=14)
+    
+    # Add running route
+    folium.PolyLine(coords, color="blue", weight=3, tooltip=f"Route {selected_route_idx + 1}").add_to(m)
+    
+    # Add marker on user's location
+    folium.Marker(
+        location=coords[0],
+        tooltip=f"Your Location!",
+        icon=folium.Icon(color="red", icon="map-marker")
+    ).add_to(m)
+    
+    # Display map
+    st_folium(m, width=700, height=400)
