@@ -6,8 +6,11 @@ When running this app, the user can input the address of their location, a desir
 
 ## Project Structure
 Python
+
 Streamlit for build
+
 OpenRouteService API for generating routes and validation the user's location address
+
 Folium for displaying the routes
 
 ## Setup Instructions
