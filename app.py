@@ -17,7 +17,7 @@ ORS_API_KEY = st.secrets["openrouteservice"]["api_key"]
 client = openrouteservice.Client(key=ORS_API_KEY)
 
 # streamlit UI
-st.title("Running Route Generator")
+st.title("Run-It: A Personalized Running Route Generator")
 
 location = st.text_input("Enter your location address: ")
 
@@ -114,7 +114,7 @@ if st.button("Generate routes", disabled=not filled):
             if lat and long:
                 st.success("Address has been successfully validated and geocoded")
                 print(long, lat)
-                
+
                 # generate routes
                 routes = []
                 for i in range(3):
@@ -131,7 +131,7 @@ if st.button("Generate routes", disabled=not filled):
     else:
         st.warning("Please enter your current location")
 
-
+#TODO: incorporate pytorch somehow for generating/ordering based on elevation etc.
 # Displaying the running routes
 if st.session_state["show_map"] and st.session_state["routes"]:
     st.title("Running Routes Below:")

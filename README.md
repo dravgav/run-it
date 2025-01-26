@@ -1,4 +1,4 @@
-# Welcome to Route Generator!
+# Welcome to Run-It!
 
 Inspired by my love for running, and my half-marathon training I did during the latter half of 2024, I created a web application that generates running routes based on a few inputs given by a user. I utilized Python, Streamlit, OpenRouteService, and Folium to make this happen.
 
