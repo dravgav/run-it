@@ -7,6 +7,7 @@ import random
 import folium
 from streamlit_folium import st_folium
 import polyline
+import json
 
 # flag to save map onto screen
 if "show_map" not in st.session_state:
@@ -73,6 +74,18 @@ def validate_address(address):
         st.error(f"An error has occurred while validating: {error}")
         return None, None
 
+def format_instructions(routeData):
+    """
+    Given a routeData object, extract all the instruction fields and format it into a bulleted string object.
+    """
+    instructions = []
+    for route in routeData['routes']:
+        for segment in route['segments']:
+            for step in segment['steps']:
+                instructions.append(step['instruction'])
+    
+    return "\n".join([f"- {instr}" for instr in instructions])
+
 
 def generate_route(lat, long, dist_m, seed):
     """
@@ -99,6 +112,7 @@ def generate_route(lat, long, dist_m, seed):
                     "seed": seed
             }
         })
+
         return route
     except Exception as e:
         st.error(f"Error generating route: {e}")
@@ -117,10 +131,13 @@ if st.button("Generate routes", disabled=not filled):
 
                 # generate routes
                 routes = []
+
                 for i in range(3):
                     random_seed = random.randint(1, 1000)
                     route = generate_route(lat, long, distance_meters, random_seed)
-                    routes.append(route)
+                    instr = format_instructions(route)
+                    
+                    routes.append({"route": route, "instructions": instr})
 
                 # update st flags
                 st.session_state["show_map"] = True
@@ -146,7 +163,8 @@ if st.session_state["show_map"] and st.session_state["routes"]:
     
     # Get the selected route's encoded geometry
     selected_route = st.session_state["routes"][selected_route_idx]
-    encoded_polyline = selected_route["routes"][0]["geometry"]
+    encoded_polyline = selected_route["route"]["routes"][0]["geometry"]
+    instructions = selected_route["instructions"]
     
     # Decode polyline (running route) => get the list of (lat, lon)'s
     coords = polyline.decode(encoded_polyline)
@@ -166,3 +184,15 @@ if st.session_state["show_map"] and st.session_state["routes"]:
     
     # Display map
     st_folium(m, width=700, height=400)
+
+    # Show instructions
+    st.text_area("Route Instructions", instructions, height=300)
+
+    # Download button for instructions
+    instructions_bytes = instructions.encode("utf-8")
+    st.download_button(
+        label="Download Route Instructions",
+        data=instructions_bytes,
+        file_name=f"route_{selected_route_idx+1}_instructions.txt",
+        mime="text/plain"
+    )
